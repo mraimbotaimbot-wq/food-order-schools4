@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สั่งอาหาร</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#f2f2f2;
+}
+.container{
+  max-width:420px;
+  margin:30px auto;
+  background:#fff;
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);
+}
+.hidden{display:none}
+button{
+  width:100%;
+  padding:12px;
+  margin-top:8px;
+  border:none;
+  border-radius:8px;
+  background:#2b7cff;
+  color:#fff;
+  font-size:16px;
+}
+input,select{
+  width:100%;
+  padding:10px;
+  margin-top:6px;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+.menu{
+  border:1px solid #ddd;
+  border-radius:8px;
+  padding:8px;
+  margin-top:10px;
+  text-align:center;
+}
+.menu img{
+  width:100%;
+  height:100px;
+  object-fit:cover;
+  border-radius:6px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- หน้าแรก -->
+<div class="container" id="home">
+<h2>🍽️ สั่งอาหาร</h2>
+<button onclick="show('login')">เข้าสู่ระบบ</button>
+<button onclick="show('register')">สมัครสมาชิก</button>
+</div>
+
+<!-- สมัคร -->
+<div class="container hidden" id="register">
+<h3>สมัครสมาชิก</h3>
+<select id="regRole">
+<option value="student">นักเรียน</option>
+<option value="seller">คนขาย</option>
+</select>
+<input id="regUser" placeholder="ชื่อผู้ใช้ (อย่างน้อย 10 ตัว)">
+<input id="regPass" type="password" placeholder="รหัสผ่าน (อย่างน้อย 10 ตัว)">
+<button onclick="register()">สมัคร</button>
+<button onclick="show('home')">กลับ</button>
+</div>
+
+<!-- เข้าสู่ระบบ -->
+<div class="container hidden" id="login">
+<h3>เข้าสู่ระบบ</h3>
+<input id="loginUser" placeholder="ชื่อผู้ใช้">
+<input id="loginPass" type="password" placeholder="รหัสผ่าน">
+<button onclick="login()">เข้าสู่ระบบ</button>
+<button onclick="show('home')">กลับ</button>
+</div>
+
+<!-- หน้าร้าน -->
+<div class="container hidden" id="shop">
+<h3 id="roleTitle"></h3>
+
+<p id="noMenuMsg" style="text-align:center;color:#888"></p>
+<div id="menuList"></div>
+
+<!-- คนขาย -->
+<div id="sellerPanel" class="hidden">
+<hr>
+<h4>เพิ่มเมนูอาหาร</h4>
+<input type="file" id="foodImg">
+<input id="foodName" placeholder="ชื่ออาหาร">
+<input id="foodPrice" type="number" placeholder="ราคา">
+<button onclick="addMenu()">เพิ่มเมนู</button>
+</div>
+
+<button onclick="logout()">ออกจากระบบ</button>
+</div>
+
+<script>
+let currentRole = "";
+let menus = JSON.parse(localStorage.getItem("menus") || "[]");
+
+function show(id){
+  document.querySelectorAll(".container").forEach(d=>d.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+
+/* สมัคร */
+function register(){
+  const user = regUser.value.trim();
+  const pass = regPass.value.trim();
+  const role = regRole.value;
+
+  if(user.length < 10 || pass.length < 10){
+    alert("ชื่อผู้ใช้และรหัสผ่านต้องอย่างน้อย 10 ตัวอักษร");
+    return;
+  }
+
+  localStorage.setItem("account", JSON.stringify({user,pass,role}));
+  alert("สมัครสำเร็จ");
+  show("login");
+}
+
+/* เข้าสู่ระบบ */
+function login(){
+  const acc = JSON.parse(localStorage.getItem("account") || "{}");
+  if(loginUser.value !== acc.user || loginPass.value !== acc.pass){
+    alert("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+    show("home");
+    return;
+  }
+
+  currentRole = acc.role;
+  roleTitle.textContent = currentRole === "seller" ? "🧑‍🍳 คนขาย" : "🎓 นักเรียน";
+  show("shop");
+  renderMenus();
+
+  if(currentRole === "seller"){
+    sellerPanel.classList.remove("hidden");
+  }
+}
+
+/* เพิ่มเมนู (คนขาย) */
+function addMenu(){
+  if(!foodImg.files[0] || !foodName.value || !foodPrice.value){
+    alert("กรอกข้อมูลให้ครบ");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = e=>{
+    menus.push({
+      name: foodName.value,
+      price: foodPrice.value,
+      img: e.target.result
+    });
+    localStorage.setItem("menus", JSON.stringify(menus));
+    renderMenus();
+    foodName.value="";
+    foodPrice.value="";
+  };
+  reader.readAsDataURL(foodImg.files[0]);
+}
+
+/* แสดงเมนู */
+function renderMenus(){
+  menuList.innerHTML="";
+  if(menus.length === 0){
+    noMenuMsg.textContent="ยังไม่มีเมนูอาหารจากร้านค้า";
+    return;
+  }
+
+  noMenuMsg.textContent="";
+  menus.forEach(m=>{
+    const div=document.createElement("div");
+    div.className="menu";
+    div.innerHTML=`
+      <img src="${m.img}">
+      <h4>${m.name}</h4>
+      <b>${m.price} บาท</b>
+    `;
+    menuList.appendChild(div);
+  });
+}
+
+function logout(){
+  show("home");
+}
+</script>
+
+</body>
+</html>
